@@ -12,15 +12,20 @@ public class MyVisit<T> extends ChocopyGrammarBaseVisitor<T>{
             while(ctx!=null) {
                 if (ctx.var_def() != null) {
                     visitVar_def(ctx.var_def(cont));
-                } else if (ctx.print_def() != null) {
+                }
+                if (ctx.print_def() != null) {
                     visitPrint_def(ctx.print_def(cont));
-                } else if (ctx.func_def() != null) {
-
-                } else if (ctx.class_def() != null) {
-
-                } else if (ctx.stmt() != null) {
+                }
+                if (ctx.func_def() != null) {
 
                 }
+                if (ctx.class_def() != null) {
+
+                }
+                if (ctx.stmt() != null) {
+
+                }
+               // System.out.println("No pasa");
             }
        // }catch(Exception e) {
         //}
@@ -29,24 +34,27 @@ public class MyVisit<T> extends ChocopyGrammarBaseVisitor<T>{
         return (T)"Aq";
     }
 
+
     @Override
     public T visitCexpr(ChocopyGrammarParser.CexprContext ctx) {
-        String s=null;
+        List s = new ArrayList();
         if(ctx.ID()!=null){
-            s=ctx.ID().getText();
+           // System.out.println(ctx.ID());
+            s.add(ctx.ID());
+            s.add("id");
         }else if(ctx.literal()!=null){
-            s=(String)visitLiteral(ctx.literal());
+            s=(List) visitLiteral(ctx.literal());
         }
         return (T)s;
     }
 
     @Override
     public T visitExpr(ChocopyGrammarParser.ExprContext ctx) {
-        String res=null;
+        List res;
         if(ctx.tk_cadena()!=null){
            visitTk_cadena(ctx.tk_cadena());
         }else if(ctx.cexpr()!=null){
-           res =(String)visitCexpr(ctx.cexpr());
+           res =(List) visitCexpr(ctx.cexpr());
            return (T) res;
         }else if(ctx.print_def()!=null){
             //Duda print(inside print)
@@ -95,25 +103,23 @@ public class MyVisit<T> extends ChocopyGrammarBaseVisitor<T>{
 
     @Override
     public T visitPrint_def(ChocopyGrammarParser.Print_defContext ctx) {
-        String ans = (String)visitExpr(ctx.expr());
-        System.out.println(tablaSimbolos);
-        System.out.println(ans);
+        List ans = (List)visitExpr(ctx.expr());
+
+        if(ans.get(1).equals("id")){
+            if(tablaSimbolos.containsKey(ans.get(0))){
+                System.out.println(tablaSimbolos.get(ans.get(0)));
+            }else{
+                System.out.println("Simbolo no encontrado");
+                System.exit(-1);
+            }
+        }else{
+            System.out.println(ans.get(0));
+        }
+
         cont=cont+1;
-        return (T) ans;
+        return super.visitPrint_def(ctx);
     }
 
-
-    @Override
-    public T visitClass_def(ChocopyGrammarParser.Class_defContext ctx) {
-
-        return super.visitClass_def(ctx);
-    }
-
-    @Override
-    public T visitClass_body(ChocopyGrammarParser.Class_bodyContext ctx) {
-
-        return super.visitClass_body(ctx);
-    }
 
     @Override
     public T visitFunc_def(ChocopyGrammarParser.Func_defContext ctx) {
@@ -150,11 +156,6 @@ public class MyVisit<T> extends ChocopyGrammarBaseVisitor<T>{
         return (T)id_def;
     }
 
-    @Override
-    public T visitFunc_body(ChocopyGrammarParser.Func_bodyContext ctx) {
-
-        return super.visitFunc_body(ctx);
-    }
 
     @Override
     public T visitTyped_var(ChocopyGrammarParser.Typed_varContext ctx) {
@@ -213,8 +214,7 @@ public class MyVisit<T> extends ChocopyGrammarBaseVisitor<T>{
 
     @Override
     public T visitVar_def(ChocopyGrammarParser.Var_defContext ctx) {
-        String totalVar = null;
-        List<String> fin = null;
+        List<String> fin = new ArrayList<>();
         List<String> literal;
         if(ctx.IGUAL()!=null){
             fin = (List<String>) visitTyped_var(ctx.typed_var());
@@ -230,27 +230,14 @@ public class MyVisit<T> extends ChocopyGrammarBaseVisitor<T>{
                 tablaSimbolos.put(fin.get(0),fin.get(2));
             }
         }else{
-            System.out.println("Error semantico");
+            System.out.println("Error semantico 1");
             System.exit(-1);
         }
         cont=cont+1;
         return super.visitVar_def(ctx);
     }
 
-    @Override
-    public T visitStmt(ChocopyGrammarParser.StmtContext ctx) {
-        return super.visitStmt(ctx);
-    }
 
-    @Override
-    public T visitSimple_stmt(ChocopyGrammarParser.Simple_stmtContext ctx) {
-        return super.visitSimple_stmt(ctx);
-    }
-
-    @Override
-    public T visitBlock(ChocopyGrammarParser.BlockContext ctx) {
-        return super.visitBlock(ctx);
-    }
 
     @Override
     public T visitLiteral(ChocopyGrammarParser.LiteralContext ctx) {
@@ -292,20 +279,76 @@ public class MyVisit<T> extends ChocopyGrammarBaseVisitor<T>{
         String cadenita= ctx.getText();
         return (T) cadenita;
     }
-
     @Override
-    public T visitMember_expr(ChocopyGrammarParser.Member_exprContext ctx) {
-        return super.visitMember_expr(ctx);
+    public T visitStmt(ChocopyGrammarParser.StmtContext ctx) {
+        String stmt = null;
+        int tamaño = ctx.expr().size();
+        int tamañoBlocks = ctx.block().size();
+        if (ctx.simple_stmt()!=null){
+            stmt =(String) visitSimple_stmt(ctx.simple_stmt());
+        }else if (ctx.IF()!=null){
+            stmt = (String) visitExpr(ctx.expr(0));
+            stmt += (String)visitBlock(ctx.block(0));
+            if (ctx.ELIF()!=null){
+                for (int i = 1; i < tamaño; i++) {
+                    stmt += (String) visitExpr(ctx.expr(i));
+                    stmt += (String)visitBlock(ctx.block(i));
+                }
+            }else if (ctx.ELSE()!=null){
+                stmt += (String)visitBlock(ctx.block().get(tamañoBlocks));
+            }
+        }else if (ctx.WHILE()!=null){
+            stmt = (String) visitExpr(ctx.expr(0));
+            stmt += (String)visitBlock(ctx.block(0));
+            if (ctx.block()!=null && tamañoBlocks>1){
+                for (int i = 1; i < tamañoBlocks; i++) {
+                    stmt += (String)visitBlock(ctx.block(i));
+                }
+            }else if (ctx.ELSE()!=null){
+                stmt += (String)visitBlock(ctx.block().get(tamañoBlocks));
+            }
+        }else if (ctx.FOR()!=null){
+            stmt = (String) visitExpr(ctx.expr(0));
+            stmt += (String)visitBlock(ctx.block(0));
+            if (ctx.block()!=null && tamañoBlocks>1){
+                for (int i = 1; i < tamañoBlocks; i++) {
+                    stmt += (String)visitBlock(ctx.block(i));
+                }
+            }else if (ctx.ELSE()!=null){
+                stmt += (String)visitBlock(ctx.block().get(tamañoBlocks));
+            }
+        }
+        return (T)stmt;
     }
 
     @Override
-    public T visitIndex_expr(ChocopyGrammarParser.Index_exprContext ctx) {
-        return super.visitIndex_expr(ctx);
+    public T visitSimple_stmt(ChocopyGrammarParser.Simple_stmtContext ctx) {
+        String stmt_simpl = null;
+        int tamaño = ctx.target().size();
+        if (ctx.PASS()!=null){
+            //:'v nariz :'v
+        }else if (ctx.expr()!=null){
+            visitExpr(ctx.expr());
+        }else if (ctx.RETURN()!=null){
+            stmt_simpl =(String) visitExpr(ctx.expr());
+        }else if (ctx.target()!=null){
+            for (int i = 0; i < tamaño; i++) {
+                stmt_simpl = (String) visitTarget(ctx.target(i));
+                stmt_simpl += (String) visitExpr(ctx.expr());
+            }
+        }
+        return (T)stmt_simpl;
     }
 
     @Override
-    public T visitTarget(ChocopyGrammarParser.TargetContext ctx) {
-        return super.visitTarget(ctx);
+    public T visitBlock(ChocopyGrammarParser.BlockContext ctx) {
+        String block = null;
+        if (ctx.stmt()!=null){
+            for (int i = 0; i < ctx.stmt().size(); i++) {
+                block += visitStmt(ctx.stmt(i));
+            }
+        }
+        return (T)block;
     }
 
 }
