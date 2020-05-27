@@ -6,7 +6,7 @@ public class Main {
         ChocopyGrammarLexer lexer = new ChocopyGrammarLexer(CharStreams.fromFileName("input/input.txt"));
         CommonTokenStream tokens = new CommonTokenStream(lexer);
         ChocopyGrammarParser parser = new ChocopyGrammarParser(tokens);
-        ParseTree tree = parser.var_def();
+        ParseTree tree = parser.inicial();
 
         MyVisit<Object> loader = new MyVisit<>();
         loader.visit(tree);

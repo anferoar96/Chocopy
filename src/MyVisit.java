@@ -1,31 +1,107 @@
-import java.util.HashMap;
+import java.util.*;
 
 public class MyVisit<T> extends ChocopyGrammarBaseVisitor<T>{
 
     HashMap<String,Object> tablaSimbolos = new HashMap<>();
+    int cont=0;
 
     @Override
     public T visitInicial(ChocopyGrammarParser.InicialContext ctx) {
-        if (ctx.print_def()!=null){
-        }else if(ctx.var_def() != null) {
+        Object c;
+        //try {
+            while(ctx!=null) {
+                if (ctx.var_def() != null) {
+                    visitVar_def(ctx.var_def(cont));
+                } else if (ctx.print_def() != null) {
+                    visitPrint_def(ctx.print_def(cont));
+                } else if (ctx.func_def() != null) {
 
-        }else if(ctx.func_def() != null) {
+                } else if (ctx.class_def() != null) {
 
-        }else if(ctx.class_def() != null) {
+                } else if (ctx.stmt() != null) {
 
-        }else if(ctx.stmt() != null) {
+                }
+            }
+       // }catch(Exception e) {
+        //}
 
+
+        return (T)"Aq";
+    }
+
+    @Override
+    public T visitCexpr(ChocopyGrammarParser.CexprContext ctx) {
+        String s=null;
+        if(ctx.ID()!=null){
+            s=ctx.ID().getText();
+        }else if(ctx.literal()!=null){
+            s=(String)visitLiteral(ctx.literal());
         }
+        return (T)s;
+    }
 
-        return super.visitInicial(ctx);
+    @Override
+    public T visitExpr(ChocopyGrammarParser.ExprContext ctx) {
+        String res=null;
+        if(ctx.tk_cadena()!=null){
+           visitTk_cadena(ctx.tk_cadena());
+        }else if(ctx.cexpr()!=null){
+           res =(String)visitCexpr(ctx.cexpr());
+           return (T) res;
+        }else if(ctx.print_def()!=null){
+            //Duda print(inside print)
+            res=null;
+        }else if(ctx.NOT()!=null){
+
+        }else if(ctx.AND() != null){
+            Boolean res1=(Boolean) visitExpr(ctx.expr(0));
+            Boolean res2=(Boolean) visitExpr(ctx.expr(1));
+            Boolean ans;
+            if(res1==Boolean.TRUE && res2==Boolean.TRUE){
+                ans=Boolean.TRUE;
+                return (T)ans;
+            }else{
+                ans=Boolean.FALSE;
+                return (T)ans;
+            }
+
+        }else if(ctx.OR()!=null){
+            //Solucionar cuando no sea de ningun tipo
+            Boolean res1=(Boolean) visitExpr(ctx.expr(0));
+            Boolean res2=(Boolean) visitExpr(ctx.expr(1));
+            Boolean ans;
+            if(res1==Boolean.TRUE ||  res2==Boolean.TRUE){
+                ans=Boolean.TRUE;
+                return (T)ans;
+            }else{
+                ans=Boolean.FALSE;
+                return (T)ans;
+            }
+        }else if(ctx.IF()!=null){
+            Boolean part1=(Boolean)visitExpr(ctx.expr(0)); //True or false
+            Object part2=visitExpr(ctx.expr(1)); //
+            Object part3=visitExpr(ctx.expr(2));
+            if(part1==Boolean.TRUE){
+                return (T)part2;
+            }else{
+                return (T)part3;
+            }
+        }else{
+            System.err.printf("<%d:%d> Error semantico, la variable con nombre: \"" + "\" ya fue declarada.\n");
+            System.exit(-1);
+        }
+        return super.visitExpr(ctx);
     }
 
     @Override
     public T visitPrint_def(ChocopyGrammarParser.Print_defContext ctx) {
         String ans = (String)visitExpr(ctx.expr());
+        System.out.println(tablaSimbolos);
         System.out.println(ans);
-        return null;
+        cont=cont+1;
+        return (T) ans;
     }
+
 
     @Override
     public T visitClass_def(ChocopyGrammarParser.Class_defContext ctx) {
@@ -82,24 +158,16 @@ public class MyVisit<T> extends ChocopyGrammarBaseVisitor<T>{
 
     @Override
     public T visitTyped_var(ChocopyGrammarParser.Typed_varContext ctx) {
-        String totalTyped = null;
+        String ans="";
+        String ans2="";
+        List<String> par=new ArrayList<>();
         if (ctx.ID() != null){
-            String id = ctx.ID().getText();
-            String dosPuntos = ctx.DOSPUNTOS().getText();
-            if (tablaSimbolos.get(id)!=null){
-                int line = ctx.ID().getSymbol().getLine();
-                int col = ctx.ID().getSymbol().getCharPositionInLine()+1;
-                System.err.printf("<%d:%d> Error semantico, la variable: \""+ id + "\" ya fue declarada. \n",line,col);
-            }else{
-                tablaSimbolos.put(id,visitType(ctx.type()));
-            }
-            if (ctx.DOSPUNTOS()!=null){
-                String typer_var = id + dosPuntos;
-                String typito = (String)visitType(ctx.type());
-                totalTyped = typer_var + typito;
-            }
+            ans=ctx.ID().getText();
+            ans2=(String)visitType(ctx.type());
+            par.add(ans);
+            par.add(ans2);
         }
-        return (T) totalTyped;
+        return (T) par;
     }
 
     @Override
@@ -146,13 +214,27 @@ public class MyVisit<T> extends ChocopyGrammarBaseVisitor<T>{
     @Override
     public T visitVar_def(ChocopyGrammarParser.Var_defContext ctx) {
         String totalVar = null;
+        List<String> fin = null;
+        List<String> literal;
         if(ctx.IGUAL()!=null){
-            String var_def = (String)visitTyped_var(ctx.typed_var());
-            String var_def2 = (String)visitLiteral(ctx.literal());
-            totalVar = var_def+var_def2;
+            fin = (List<String>) visitTyped_var(ctx.typed_var());
+            literal = (List<String>) visitLiteral(ctx.literal());
+            fin.add(literal.get(0));
+            fin.add(literal.get(1));
         }
-
-        return (T) totalVar;
+        if(fin.get(1).equals(fin.get(3))){
+            if(tablaSimbolos.containsKey(fin.get(0))){
+                System.out.println("Error semantico");
+                System.exit(-1);
+            }else{
+                tablaSimbolos.put(fin.get(0),fin.get(2));
+            }
+        }else{
+            System.out.println("Error semantico");
+            System.exit(-1);
+        }
+        cont=cont+1;
+        return super.visitVar_def(ctx);
     }
 
     @Override
@@ -173,86 +255,38 @@ public class MyVisit<T> extends ChocopyGrammarBaseVisitor<T>{
     @Override
     public T visitLiteral(ChocopyGrammarParser.LiteralContext ctx) {
         String literal = null;
+        String tipo=null;
+        List<String> ans=new ArrayList<>();
         if (ctx.NONE()!=null){
             literal = ctx.NONE().getText();
+            tipo="None";
         }else if (ctx.TRUE()!=null){
             literal = ctx.TRUE().getText();
+            tipo="True";
         }else if (ctx.FALSE()!=null){
             literal = ctx.FALSE().getText();
+            tipo="False;";
         }else if (ctx.INTEGER()!=null){
             literal = ctx.INTEGER().getText();
+            tipo="int";
         }else if (ctx.STRING()!=null){
             literal = ctx.STRING().getText();
+            tipo="str";  //Fixed
         }else if (ctx.tk_cadena()!=null){
             literal = (String)visitTk_cadena(ctx.tk_cadena());
+            tipo="str";
         }
-        return (T)literal;
-    }
 
-    @Override
-    public T visitExpr(ChocopyGrammarParser.ExprContext ctx) {
-        String res=null;
-        if(ctx.tk_cadena()!=null){
-            res= (String) visitTk_cadena(ctx.tk_cadena());
-        }else if(ctx.cexpr()!=null){
-            res=(String) visitCexpr(ctx.cexpr());
-        }else if(ctx.print_def()!=null){
-            //Duda print(inside print)
-            res=null;
-        }else if(ctx.NOT()!=null){
-
-        }else if(ctx.AND() != null){
-            Boolean res1=(Boolean) visitExpr(ctx.expr(0));
-            Boolean res2=(Boolean) visitExpr(ctx.expr(1));
-            Boolean ans;
-            if(res1==Boolean.TRUE && res2==Boolean.TRUE){
-                ans=Boolean.TRUE;
-                return (T)ans;
-            }else{
-                ans=Boolean.FALSE;
-                return (T)ans;
-            }
-
-        }else if(ctx.OR()!=null){
-            //Solucionar cuando no sea de ningun tipo
-            Boolean res1=(Boolean) visitExpr(ctx.expr(0));
-            Boolean res2=(Boolean) visitExpr(ctx.expr(1));
-            Boolean ans;
-            if(res1==Boolean.TRUE ||  res2==Boolean.TRUE){
-                ans=Boolean.TRUE;
-                return (T)ans;
-            }else{
-                ans=Boolean.FALSE;
-                return (T)ans;
-            }
-        }else if(ctx.IF()!=null){
-            Boolean part1=(Boolean)visitExpr(ctx.expr(0)); //True or false
-            Object part2=visitExpr(ctx.expr(1)); //
-            Object part3=visitExpr(ctx.expr(2));
-            if(part1==Boolean.TRUE){
-                return (T)part2;
-            }else{
-                return (T)part3;
-            }
-        }else{
-            System.err.printf("<%d:%d> Error semantico, la variable con nombre: \"" + "\" ya fue declarada.\n");
-            System.exit(-1);
-        }
-        return (T)res;
+        ans.add(literal);
+        ans.add(tipo);
+        return (T)ans;
     }
 
 
 
-    @Override
-    public T visitCexpr(ChocopyGrammarParser.CexprContext ctx) {
-        String s=null;
-        if(ctx.ID()!=null){
-            s=ctx.ID().getText();
-        }else if(ctx.literal()!=null){
-            s=(String)visitLiteral(ctx.literal());
-        }
-        return (T)s;
-    }
+
+
+
     @Override
     public T visitTk_cadena(ChocopyGrammarParser.Tk_cadenaContext ctx) {
         String cadenita= ctx.getText();
